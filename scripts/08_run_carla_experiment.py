@@ -257,11 +257,11 @@ def main():
                             safety_margin_m=float(planner_cfg["safety_margin_m"]),
                             preferred_steering_deg=preferred_steering)
                     else:
-                        # No track has a full observation window yet; hold speed
-                        # with a straight candidate, but do not infer free space.
+                        # No actors are currently within the observation radius.
                         from pwmd.planning.safety import PlannerDecision
-                        decision = PlannerDecision("warmup", preferred_steering, min(2.0, args.cruise_speed),
-                                                    False, "Waiting for synchronized actor histories",
+                        decision = PlannerDecision("no_nearby_actors", preferred_steering,
+                                                    args.cruise_speed, False,
+                                                    "No surrounding actors inside the configured radius",
                                                     float("inf"), None)
                     min_clearance = min(min_clearance, decision.minimum_clearance_m)
                     if decision.emergency_brake:
