@@ -248,12 +248,13 @@ def main():
                             paths, candidate_times, ego_future, ego_speed,
                             actor_radii_m=scene["actor_radii_m"],
                             ego_radius_m=float(planner_cfg["ego_radius_m"]),
-                            safety_margin_m=float(planner_cfg["safety_margin_m"]))
+                            safety_margin_m=float(planner_cfg["safety_margin_m"]),
+                            preferred_steering_deg=preferred_steering)
                     else:
                         # No track has a full observation window yet; hold speed
                         # with a straight candidate, but do not infer free space.
                         from pwmd.planning.safety import PlannerDecision
-                        decision = PlannerDecision("warmup", 0.0, min(2.0, args.cruise_speed),
+                        decision = PlannerDecision("warmup", preferred_steering, min(2.0, args.cruise_speed),
                                                     False, "Waiting for synchronized actor histories",
                                                     float("inf"), None)
                     min_clearance = min(min_clearance, decision.minimum_clearance_m)
