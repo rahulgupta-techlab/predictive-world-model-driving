@@ -56,7 +56,7 @@ def _control_for_decision(carla, decision, speed_mps, previous_steer,
                           cruise_speed_mps, max_steer_deg=30.0):
     if decision.emergency_brake:
         return carla.VehicleControl(throttle=0.0, brake=1.0, steer=0.0), 0.0
-    target = min(cruise_speed_mps, decision.target_speed_mps)
+    target = cruise_speed_mps if decision.mode == "predictive_candidate" else min(cruise_speed_mps, decision.target_speed_mps)
     error = target - speed_mps
     throttle = float(np.clip(0.35 * error, 0.0, 0.55))
     brake = float(np.clip(-0.45 * error, 0.0, 1.0))
