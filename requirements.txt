@@ -1,0 +1,8 @@
+numpy<2
+pandas
+Pillow
+PyYAML
+tqdm
+pytest
+matplotlib
+opencv-python
