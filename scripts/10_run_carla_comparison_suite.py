@@ -9,6 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def run_suite(seeds, seconds, vehicles, checkpoint, output_dir):
     output_dir = Path(output_dir)
+    if not output_dir.is_absolute():
+        output_dir = ROOT / output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     for seed in seeds:
         summaries = []
