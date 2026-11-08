@@ -102,12 +102,12 @@ def score_candidate_path_from_predictions(ego_path, times, predicted_actor_paths
                                       ego_radius_m, safety_margin_m, collision_threshold_m)
 
 
-def _choose(paths, scorer):
+def _choose(paths, scorer, preferred_steering_deg=0.0):
     scored = []
     for steering, path in paths.items():
         risk = scorer(path)
         scored.append((risk.collision_predicted, -risk.minimum_clearance_m,
-                       abs(float(steering)), float(steering), risk))
+                       abs(float(steering) - float(preferred_steering_deg)), float(steering), risk))
     if not scored:
         raise ValueError("At least one candidate path is required")
     scored.sort(key=lambda item: item[:3])
@@ -116,13 +116,15 @@ def _choose(paths, scorer):
             "all_candidates": {item[3]: item[4] for item in scored}}
 
 
-def choose_lowest_risk(paths, times, actors, ego_radius_m=1.0, safety_margin_m=0.5):
+def choose_lowest_risk(paths, times, actors, ego_radius_m=1.0, safety_margin_m=0.5,
+                       preferred_steering_deg=0.0):
     return _choose(paths, lambda path: score_candidate_path(
-        path, times, actors, ego_radius_m, safety_margin_m))
+        path, times, actors, ego_radius_m, safety_margin_m), preferred_steering_deg)
 
 
 def choose_lowest_risk_from_predictions(paths, times, predicted_actor_paths,
                                         actor_radii_m=None, ego_radius_m=1.0,
-                                        safety_margin_m=0.5):
+                                        safety_margin_m=0.5, preferred_steering_deg=0.0):
     return _choose(paths, lambda path: score_candidate_path_from_predictions(
-        path, times, predicted_actor_paths, actor_radii_m, ego_radius_m, safety_margin_m))
+        path, times, predicted_actor_paths, actor_radii_m, ego_radius_m, safety_margin_m),
+        preferred_steering_deg)
