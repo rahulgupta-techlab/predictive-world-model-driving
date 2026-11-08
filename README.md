@@ -54,6 +54,9 @@ The repository now includes a CARLA experiment harness with three modes: Traffic
 └── tests/
     ├── test_planning_risk.py
     ├── test_predicted_trajectory_risk.py
+    ├── test_prediction_coordinates.py
+    ├── test_prediction_scene.py
+    ├── test_carla_comparison.py
     ├── test_safety_gate.py
     └── test_trajectory_pipeline.py
 ```
@@ -149,7 +152,7 @@ decision = decide_action_from_predictions(
 )
 ```
 
-This illustrates the software interface only. The example assumes the observed windows, current ego-relative actor positions and relative headings have been assembled from one synchronized scene. Inputs must share the planner time grid and correct actor radii. The current dataset does not yet provide this synchronized scene assembler; it must be implemented and validated before using this interface in a real CARLA loop.
+This illustrates the software interface only. The example assumes the observed windows, current ego-relative actor positions and relative headings have been assembled from one synchronized scene. Inputs must share the planner time grid and correct actor radii. The `SceneAssembler` implementation is in `src/pwmd/prediction/scene.py`; it has unit tests for temporal gaps, actor-local history windows and ego-frame transforms. Its behavior still needs validation against real CARLA frame/timestamp data before interpreting closed-loop results.
 
 ## Closed-loop CARLA comparison
 
