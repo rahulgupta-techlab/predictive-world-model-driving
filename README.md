@@ -161,7 +161,7 @@ python scripts/06_train_transformer.py --epochs 60 --d-model 64 --heads 4 --laye
 
 The prediction configuration is in `configs/prediction.yaml`. The planner configuration is in `configs/planner.yaml`. The risk-scoring module in `src/pwmd/planning/risk.py` generates constant-steering bicycle-model paths and scores them against constant-velocity actor extrapolations. It is a transparent kinematic baseline; it does not yet consume learned multi-agent predictions, optimize a full MPC objective, enforce road boundaries or traffic rules, model uncertainty, or control a CARLA ego vehicle.
 
-The current forecasting scripts use actor position tracks from CARLA logs. They do not yet include camera-based detection, multi-agent interaction modelling, calibrated predictive uncertainty, or an introspective safety fallback.
+The `safety.py` module adds a rule-based introspection gate: if the selected candidate violates configured clearance or time-to-collision thresholds, it requests a stop fallback. This is a simple experimental guardrail, not a certified safety mechanism, and it has not been connected to CARLA vehicle controls. The current forecasting scripts use actor position tracks from CARLA logs. They do not yet include camera-based detection, multi-agent interaction modelling, calibrated predictive uncertainty, or a learned introspection model.
 
 ## Planned evaluation
 
