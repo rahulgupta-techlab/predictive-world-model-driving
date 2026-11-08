@@ -45,7 +45,7 @@ def main():
     p.add_argument("--obs-steps", type=int, default=8, help="Observed samples (2 s at 4 Hz)")
     p.add_argument("--pred-steps", type=int, default=12, help="Future samples (3 s at 4 Hz)")
     p.add_argument("--sample-stride", type=int, default=5, help="Subsample 20 Hz logs to 4 Hz")
-    p.add_argument("--min-speed", type=float, default=0.5, help="Minimum actor speed in m/s")
+    p.add_argument("--min-speed", type=float, default=0.0, help="Minimum actor speed in m/s; keep zero to include stopped actors")
     args = p.parse_args()
 
     root = Path(args.data_dir)
