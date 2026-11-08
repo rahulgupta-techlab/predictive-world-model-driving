@@ -2,7 +2,7 @@
 
 A research-oriented portfolio project exploring whether an autonomous-driving agent can improve safety in long-horizon and unexpected scenarios by predicting possible future states, evaluating candidate actions, and inspecting its own predictions before acting.
 
-> **Project status:** Early implementation / starter stage. The current code supports CARLA environment checks and a baseline mixed-traffic data collector. Trajectory prediction, predictive planning, and introspective safety monitoring are planned research components, not yet implemented or evaluated.
+> **Project status:** Research prototype under active development. The repository now includes CARLA collection utilities, trajectory dataset preparation, constant-velocity and LSTM forecasting baselines, an optional Transformer forecaster, and a transparent kinematic candidate-path risk scorer. These components have not yet been validated in a local CARLA run or evaluated on a collected dataset.
 
 ## Research question
 
@@ -12,9 +12,9 @@ Can an autonomous-driving agent improve safety in long-horizon and unexpected sc
 
 1. **Simulation and data collection** — collect synchronized ego-vehicle, surrounding-actor, and front-camera observations in CARLA.
 2. **Dataset and baselines** — prepare temporal samples and establish constant-velocity prediction baselines.
-3. **World model** — implement and compare learned trajectory predictors, initially an LSTM and then a Transformer if justified by results.
-4. **Predictive planning** — generate candidate actions and evaluate predicted outcomes with a model-predictive-control (MPC) style planner.
-5. **Introspection and safety gate** — estimate uncertainty, disagreement, and collision risk; trigger a conservative fallback when risk is high.
+3. **World model** — compare the LSTM and Transformer trajectory forecasting baselines.
+4. **Predictive planning** — generate kinematic candidate paths and score them against constant-velocity actor extrapolations. This is a first risk-scoring baseline, not a closed-loop MPC controller.
+5. **Introspection and safety gate** — add calibrated uncertainty, model disagreement, and a tested fallback policy; these remain future work.
 6. **Evaluation** — compare safety, progress, comfort, prediction quality, and runtime, including ablations.
 
 ## Initial implementation
@@ -153,7 +153,15 @@ Run unit tests for coordinate transforms and metric calculations:
 pytest -q
 ```
 
-The prediction configuration is in `configs/prediction.yaml`. The current forecasting scripts use actor position tracks from CARLA logs; they do not yet include camera-based detection, multi-agent interaction modelling, a Transformer, an MPC planner, or an introspective safety controller.
+Train the Transformer alternative:
+ 
+```powershell
+python scripts/06_train_transformer.py --epochs 60 --d-model 64 --heads 4 --layers 2
+```
+
+The prediction configuration is in `configs/prediction.yaml`. The planner configuration is in `configs/planner.yaml`. The risk-scoring module in `src/pwmd/planning/risk.py` generates constant-steering bicycle-model paths and scores them against constant-velocity actor extrapolations. It is a transparent kinematic baseline; it does not yet consume learned multi-agent predictions, optimize a full MPC objective, enforce road boundaries or traffic rules, model uncertainty, or control a CARLA ego vehicle.
+
+The current forecasting scripts use actor position tracks from CARLA logs. They do not yet include camera-based detection, multi-agent interaction modelling, calibrated predictive uncertainty, or an introspective safety fallback.
 
 ## Planned evaluation
 
