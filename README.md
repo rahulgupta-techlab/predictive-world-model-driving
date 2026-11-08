@@ -41,7 +41,12 @@ The collector currently uses CARLA Traffic Manager autopilot for the ego vehicle
 ├── scripts/
 │   ├── 00_check_environment.py
 │   ├── 01_check_carla.py
-│   └── 02_collect_scenarios.py
+│   ├── 02_collect_scenarios.py
+│   ├── 03_prepare_trajectory_dataset.py
+│   ├── 04_evaluate_constant_velocity.py
+│   └── 05_train_lstm.py
+├── tests/
+│   └── test_trajectory_pipeline.py
 ├── .gitignore
 └── requirements.txt
 ```
@@ -117,6 +122,38 @@ data/raw/<scenario>/<episode_id>/
 - `metadata.json`: seed, map, versions, and collection configuration.
 
 Raw and processed datasets are excluded from Git by default. Do not commit large datasets, CARLA binaries, credentials, or model weights.
+
+## Trajectory forecasting pipeline (new starter modules)
+
+After collecting **at least three distinct episodes**, prepare a trajectory dataset:
+
+```powershell
+python scripts/03_prepare_trajectory_dataset.py --obs-steps 8 --pred-steps 12 --sample-stride 5
+```
+
+This creates actor-centric, heading-aligned XY windows under `data/processed/`. Episode-level splitting is used to reduce leakage between overlapping windows. With fewer than three episodes, the script deliberately keeps all samples in the training split; collect more episodes before attempting held-out evaluation.
+
+Evaluate the constant-velocity baseline:
+
+```powershell
+python scripts/04_evaluate_constant_velocity.py --split test --dt 0.25
+```
+
+Train the optional LSTM baseline (requires a separately installed PyTorch build):
+
+```powershell
+python scripts/05_train_lstm.py --epochs 40
+```
+
+The LSTM checkpoint and metrics are starter outputs, not evidence of a successful experiment until the scripts have been run on collected data. Review dataset size, split composition, and metrics before drawing conclusions.
+
+Run unit tests for coordinate transforms and metric calculations:
+
+```powershell
+pytest -q
+```
+
+The prediction configuration is in `configs/prediction.yaml`. The current forecasting scripts use actor position tracks from CARLA logs; they do not yet include camera-based detection, multi-agent interaction modelling, a Transformer, an MPC planner, or an introspective safety controller.
 
 ## Planned evaluation
 
