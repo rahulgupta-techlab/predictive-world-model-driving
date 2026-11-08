@@ -122,16 +122,22 @@ Use `--checkpoint experiments/results/lstm.pt` to evaluate the LSTM. The evaluat
 
 ## Connecting predictions to the planner
 
-The reusable inference API is in `src/pwmd/prediction/forecasters.py`. The planner accepts one future XY array per surrounding actor:
+The reusable inference API is in `src/pwmd/prediction/forecasters.py`; `coordinates.py` converts actor-centric forecasts into the ego frame. The planner accepts one future XY array per surrounding actor, sampled on the planner time grid:
 
 ```python
 from pwmd.prediction.forecasters import load_forecaster, predict
+from pwmd.prediction.coordinates import actor_local_to_ego_frame
 from pwmd.planning.risk import generate_candidate_paths
 from pwmd.planning.safety import decide_action_from_predictions
 
 model, device, metadata = load_forecaster("experiments/results/transformer.pt")
-actor_futures = predict(model, device, observed_actor_windows)
-times, candidate_paths = generate_candidate_paths(speed_mps=8.0)
+local_futures = predict(model, device, observed_actor_windows)
+# These values must come from one synchronized scene.
+actor_futures = [
+    actor_local_to_ego_frame(future, actor_position_ego[i], actor_yaw_relative_rad[i])
+    for i, future in enumerate(local_futures)
+]
+times, candidate_paths = generate_candidate_paths(speed_mps=8.0, horizon_s=3.0, dt=0.25)
 decision = decide_action_from_predictions(
     candidate_paths, times, actor_futures,
     current_speed_mps=8.0,
@@ -139,7 +145,7 @@ decision = decide_action_from_predictions(
 )
 ```
 
-This illustrates the software interface only. Inputs must already be transformed into the same coordinate frame, ordered on the same future time grid, and associated with the correct actor radii. The current dataset's actor-centric windows are not automatically a synchronized multi-actor scene representation; a scene assembler and coordinate-transform validation are still required before using this interface in a real CARLA loop.
+This illustrates the software interface only. The example assumes the observed windows, current ego-relative actor positions and relative headings have been assembled from one synchronized scene. Inputs must share the planner time grid and correct actor radii. The current dataset does not yet provide this synchronized scene assembler; it must be implemented and validated before using this interface in a real CARLA loop.
 
 ## Evaluation plan
 
