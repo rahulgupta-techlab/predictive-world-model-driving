@@ -34,6 +34,24 @@ def _world_vector_to_ego(vx, vy, yaw_rad):
     return np.array([c * vx + s * vy, -s * vx + c * vy], dtype=np.float64)
 
 
+def _lane_preference_deg(world_map, carla, ego_transform, lookahead_m=8.0):
+    """Small pure-pursuit-like heading correction toward the current lane."""
+    waypoint = world_map.get_waypoint(
+        ego_transform.location, project_to_road=True,
+        lane_type=carla.LaneType.Driving)
+    if waypoint is None:
+        return 0.0
+    targets = waypoint.next(lookahead_m)
+    if not targets:
+        return 0.0
+    target = targets[0].transform.location
+    dx = target.x - ego_transform.location.x
+    dy = target.y - ego_transform.location.y
+    target_yaw = math.degrees(math.atan2(dy, dx))
+    error = (target_yaw - ego_transform.rotation.yaw + 180.0) % 360.0 - 180.0
+    return float(np.clip(0.8 * error, -12.0, 12.0))
+
+
 def _control_for_decision(carla, decision, speed_mps, previous_steer,
                           cruise_speed_mps, max_steer_deg=30.0):
     if decision.emergency_brake:
@@ -197,9 +215,11 @@ def main():
                 ego_state = {"x": ego_loc.x, "y": ego_loc.y, "yaw_deg": ego_tf.rotation.yaw}
                 scene = assembler.update(frame, ego_state, actor_states)
                 if scene is not None:
+                    preferred_steering = _lane_preference_deg(world.get_map(), carla, ego_tf)
+                    candidate_steering = [preferred_steering + offset for offset in planner_cfg["steering_offsets_deg"]]
                     candidate_times, paths = generate_candidate_paths(
                         ego_speed, horizon_s=horizon, dt=planner_dt,
-                        steering_angles_deg=planner_cfg["steering_candidates_deg"],
+                        steering_angles_deg=candidate_steering,
                         wheelbase_m=float(planner_cfg["wheelbase_m"]))
                     if args.mode == "constant_velocity":
                         actor_models = []
@@ -214,7 +234,8 @@ def main():
                         decision = decide_action(
                             paths, candidate_times, actor_models, ego_speed,
                             ego_radius_m=float(planner_cfg["ego_radius_m"]),
-                            safety_margin_m=float(planner_cfg["safety_margin_m"]))
+                            safety_margin_m=float(planner_cfg["safety_margin_m"]),
+                            preferred_steering_deg=preferred_steering)
                     elif scene["actor_ids"]:
                         local_future = predict(model, device, scene["observed_xy"])
                         ego_future = [
