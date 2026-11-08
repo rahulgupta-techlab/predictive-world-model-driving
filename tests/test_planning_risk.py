@@ -26,3 +26,11 @@ def test_risk_selector_returns_one_of_supplied_candidates():
     times, paths = planning.generate_candidate_paths(4.0, horizon_s=1.5)
     actor = planning.ActorState("nearby", (3.0, 0.0), (0.0, 0.0), radius_m=0.6)
     assert planning.choose_lowest_risk(paths, times, [actor])["steering_deg"] in paths
+
+
+def test_equal_risk_candidates_follow_lane_reference_preference():
+    times, paths = planning.generate_candidate_paths(
+        4.0, horizon_s=1.0, dt=0.1, steering_angles_deg=(-5, 0, 5, 10))
+    result = planning.choose_lowest_risk(
+        paths, times, [], preferred_steering_deg=5.0)
+    assert result["steering_deg"] == 5.0
