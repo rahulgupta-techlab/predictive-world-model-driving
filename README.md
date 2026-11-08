@@ -42,7 +42,8 @@ The repository now includes a CARLA experiment harness with three modes: Traffic
 │   ├── 06_train_transformer.py
 │   ├── 07_evaluate_learned_forecaster.py
 │   ├── 08_run_carla_experiment.py
-│   └── 09_compare_carla_runs.py
+│   ├── 09_compare_carla_runs.py
+│   └── 10_run_carla_comparison_suite.py
 ├── src/pwmd/
 │   ├── planning/
 │   │   ├── risk.py
@@ -168,7 +169,13 @@ python scripts/08_run_carla_experiment.py --mode learned --checkpoint experiment
 python scripts/09_compare_carla_runs.py experiments/results/carla_autopilot_seed42.json experiments/results/carla_constant_velocity_seed42.json experiments/results/carla_learned_seed42.json
 ```
 
-Repeat all three modes with additional identical seeds (for example 42, 43 and 44); compare modes within each seed before aggregating results. The comparison script rejects mixed seeds/maps/CARLA versions and duplicate modes. A learned checkpoint must have 8 observed samples and 12 future samples; the planner interval is 0.25 seconds to match 20 Hz collection sampled every 5 frames. Start with short, supervised simulator runs. This controller is experimental and is not suitable for a real vehicle.
+For a repeated-seed end-to-end run, use the suite runner. It executes all three modes sequentially for each seed and writes one comparison CSV per seed:
+
+```powershell
+python scripts/10_run_carla_comparison_suite.py --checkpoint experiments/results/transformer.pt --seeds 42 43 44 --seconds 60 --vehicles 12
+```
+
+The suite runner repeats all three modes with identical seed, duration and NPC count. Compare modes within each seed before aggregating results. The comparison script rejects mixed seeds/maps/CARLA versions and duplicate modes. A learned checkpoint must have 8 observed samples and 12 future samples; the planner interval is 0.25 seconds to match 20 Hz collection sampled every 5 frames. Start with short, supervised simulator runs. This controller is experimental and is not suitable for a real vehicle.
 
 ## Evaluation plan
 
