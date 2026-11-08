@@ -1,0 +1,19 @@
+host: 127.0.0.1
+port: 2000
+timeout_seconds: 30.0
+fixed_delta_seconds: 0.05
+traffic_manager_port: 8000
+seed: 42
+output_dir: data/raw
+camera:
+  width: 960
+  height: 540
+  fov: 90
+  x: 1.5
+  y: 0.0
+  z: 2.4
+  pitch: -5.0
+camera_stride: 5
+actor_radius_m: 80.0
+vehicle_count: 18
+walker_count: 12
