@@ -3,6 +3,6 @@ time_step_seconds: 0.25
 wheelbase_m: 2.8
 ego_radius_m: 1.0
 safety_margin_m: 0.5
-steering_candidates_deg: [-12, -6, 0, 6, 12]
+steering_offsets_deg: [-8, -4, 0, 4, 8]
 actor_motion_model: constant_velocity
 # This is a kinematic research baseline, not a safety-certified controller.
