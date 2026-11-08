@@ -189,7 +189,7 @@ def main():
                     radius = 0.45 if actor.type_id.startswith("walker.") else 1.0
                     actor_states.append({
                         "id": actor.id, "x": tf.location.x, "y": tf.location.y,
-                        "yaw_deg": tf.rotation.yaw, "speed_mps": _speed(velocity),
+                        "yaw_deg": tf.rotation.yaw, "speed_mps": _speed(velocity), "vx": velocity.x, "vy": velocity.y,
                         "radius_m": radius, "type_id": actor.type_id
                     })
                 ego_state = {"x": ego_loc.x, "y": ego_loc.y, "yaw_deg": ego_tf.rotation.yaw}
@@ -205,8 +205,7 @@ def main():
                             pos = _world_vector_to_ego(actor["x"] - ego_loc.x,
                                                        actor["y"] - ego_loc.y, ego_yaw)
                             vel = _world_vector_to_ego(
-                                world.get_actor(int(actor["id"])).get_velocity().x - ego_v.x,
-                                world.get_actor(int(actor["id"])).get_velocity().y - ego_v.y,
+                                actor["vx"], actor["vy"],
                                 ego_yaw)
                             actor_models.append(ActorState(str(actor["id"]), tuple(pos),
                                                             tuple(vel), actor["radius_m"]))
@@ -231,7 +230,7 @@ def main():
                         # No track has a full observation window yet; hold speed
                         # with a straight candidate, but do not infer free space.
                         from pwmd.planning.safety import PlannerDecision
-                        decision = PlannerDecision("warmup", 0.0, min(ego_speed, args.cruise_speed),
+                        decision = PlannerDecision("warmup", 0.0, min(2.0, args.cruise_speed),
                                                     False, "Waiting for synchronized actor histories",
                                                     float("inf"), None)
                     min_clearance = min(min_clearance, decision.minimum_clearance_m)
