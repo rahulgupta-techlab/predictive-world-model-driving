@@ -17,7 +17,7 @@ Can an autonomous-driving agent improve safety in long-horizon and unexpected sc
 5. **Candidate planning:** constant-steering bicycle-model paths are scored against either constant-velocity actor extrapolations or supplied predicted actor futures.
 6. **Safety gate:** a configurable rule-based gate accepts a candidate or requests a stop fallback when clearance/TTC thresholds are violated.
 
-The planner interface can consume learned future trajectories, but the complete model-to-CARLA closed loop is **not** implemented. The current risk model assumes a common 2-D coordinate frame and synchronized predictions. It does not model road boundaries, traffic rules, full vehicle dynamics, uncertainty, or calibrated prediction confidence. The fallback is not safety-certified and is not yet connected to CARLA controls.
+The repository now includes a CARLA experiment harness with three modes: Traffic Manager autopilot, constant-velocity prediction plus candidate planning, and learned LSTM/Transformer prediction plus the same fallback gate. A synchronized scene assembler converts recent CARLA actor tracks into the actor-centric input convention used during training, then transforms forecasts into the ego frame. The harness is implemented but has not been run against a local CARLA server in this development session. The current risk model does not model road boundaries, traffic rules, full vehicle dynamics, uncertainty, or calibrated prediction confidence. The fallback is not safety-certified; treat planner modes as simulator research experiments only.
 
 ## Repository structure
 
@@ -40,13 +40,17 @@ The planner interface can consume learned future trajectories, but the complete 
 │   ├── 04_evaluate_constant_velocity.py
 │   ├── 05_train_lstm.py
 │   ├── 06_train_transformer.py
-│   └── 07_evaluate_learned_forecaster.py
+│   ├── 07_evaluate_learned_forecaster.py
+│   ├── 08_run_carla_experiment.py
+│   └── 09_compare_carla_runs.py
 ├── src/pwmd/
 │   ├── planning/
 │   │   ├── risk.py
 │   │   └── safety.py
 │   └── prediction/
-│       └── forecasters.py
+│       ├── forecasters.py
+│       ├── coordinates.py
+│       └── scene.py
 └── tests/
     ├── test_planning_risk.py
     ├── test_predicted_trajectory_risk.py
@@ -147,6 +151,22 @@ decision = decide_action_from_predictions(
 
 This illustrates the software interface only. The example assumes the observed windows, current ego-relative actor positions and relative headings have been assembled from one synchronized scene. Inputs must share the planner time grid and correct actor radii. The current dataset does not yet provide this synchronized scene assembler; it must be implemented and validated before using this interface in a real CARLA loop.
 
+## Closed-loop CARLA comparison
+
+Run the three modes separately with the same CARLA map, seed, duration and NPC count. The harness records collision-sensor events, distance travelled, mean speed, minimum predicted clearance, fallback interventions and controller decisions. It writes a JSON summary and (for planner modes) a per-frame CSV.
+
+```powershell
+# Start CARLA 0.9.15 first, then run from the repository root.
+python scripts/08_run_carla_experiment.py --mode autopilot --seed 42 --seconds 60
+python scripts/08_run_carla_experiment.py --mode constant_velocity --seed 42 --seconds 60
+python scripts/08_run_carla_experiment.py --mode learned --checkpoint experiments/results/transformer.pt --seed 42 --seconds 60
+
+# Compare matching-seed summaries.
+python scripts/09_compare_carla_runs.py experiments/results/carla_autopilot_seed42.json experiments/results/carla_constant_velocity_seed42.json experiments/results/carla_learned_seed42.json
+```
+
+Repeat all three modes with additional identical seeds (for example 42, 43 and 44); compare modes within each seed before aggregating results. The comparison script rejects mixed seeds/maps/CARLA versions and duplicate modes. A learned checkpoint must have 8 observed samples and 12 future samples; the planner interval is 0.25 seconds to match 20 Hz collection sampled every 5 frames. Start with short, supervised simulator runs. This controller is experimental and is not suitable for a real vehicle.
+
 ## Evaluation plan
 
 | Dimension | Candidate metrics |
@@ -158,7 +178,7 @@ This illustrates the software interface only. The example assumes the observed w
 | Introspection | Risk recall, false-alarm rate, uncertainty calibration |
 | Runtime | Inference and planning latency |
 
-The next major research milestone is a validated scene assembler and CARLA closed-loop adapter, followed by controlled comparisons between autopilot, constant-velocity planning and learned-prediction planning. Safety comparisons must account for route progress so that a system that simply stops is not automatically considered better.
+The next research milestone is empirical validation: run the harness, inspect the generated logs, verify scenario comparability, and report repeated-seed results. Safety comparisons must account for distance travelled and mean speed so that a system that simply stops is not automatically considered better.
 
 ## Tests
 
