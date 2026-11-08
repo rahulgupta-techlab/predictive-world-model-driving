@@ -94,13 +94,16 @@ class SceneAssembler:
             return {"frame": frame, "actor_ids": [], "observed_xy": np.empty((0, self.obs_steps, 2), np.float32),
                     "actor_positions_ego": np.empty((0, 2), np.float64),
                     "actor_yaw_relative_rad": np.empty((0,), np.float64),
-                    "actor_radii_m": []}
+                    "actor_radii_m": [], "visible_actor_count": len(seen),
+                    "untracked_actor_count": len(seen)}
         return {
             "frame": frame, "actor_ids": ids,
             "observed_xy": np.stack(windows),
             "actor_positions_ego": np.stack(positions),
             "actor_yaw_relative_rad": np.asarray(headings, dtype=np.float64),
-            "actor_radii_m": radii
+            "actor_radii_m": radii,
+            "visible_actor_count": len(seen),
+            "untracked_actor_count": len(seen) - len(ids)
         }
 
     def _expire(self, frame):
