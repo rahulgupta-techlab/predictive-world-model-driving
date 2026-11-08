@@ -38,11 +38,12 @@ def _decision(selected, current_speed_mps, minimum_clearance_m,
 def decide_action(paths, times, actors, current_speed_mps,
                   ego_radius_m=1.0, safety_margin_m=0.5,
                   minimum_clearance_m=0.5, minimum_ttc_s=1.0,
-                  fallback_speed_mps=0.0):
+                  fallback_speed_mps=0.0, preferred_steering_deg=0.0):
     """Select using constant-velocity actor extrapolations."""
     if current_speed_mps < 0 or fallback_speed_mps < 0:
         raise ValueError("Speeds must be non-negative")
-    selected = choose_lowest_risk(paths, times, actors, ego_radius_m, safety_margin_m)
+    selected = choose_lowest_risk(paths, times, actors, ego_radius_m, safety_margin_m,
+                                  preferred_steering_deg)
     return _decision(selected, current_speed_mps, minimum_clearance_m,
                      minimum_ttc_s, fallback_speed_mps)
 
@@ -51,12 +52,12 @@ def decide_action_from_predictions(paths, times, predicted_actor_paths,
                                    current_speed_mps, actor_radii_m=None,
                                    ego_radius_m=1.0, safety_margin_m=0.5,
                                    minimum_clearance_m=0.5, minimum_ttc_s=1.0,
-                                   fallback_speed_mps=0.0):
+                                   fallback_speed_mps=0.0, preferred_steering_deg=0.0):
     """Select or stop using learned actor futures supplied by an inference model."""
     if current_speed_mps < 0 or fallback_speed_mps < 0:
         raise ValueError("Speeds must be non-negative")
     selected = choose_lowest_risk_from_predictions(
         paths, times, predicted_actor_paths, actor_radii_m,
-        ego_radius_m, safety_margin_m)
+        ego_radius_m, safety_margin_m, preferred_steering_deg)
     return _decision(selected, current_speed_mps, minimum_clearance_m,
                      minimum_ttc_s, fallback_speed_mps)
