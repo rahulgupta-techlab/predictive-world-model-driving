@@ -11,7 +11,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import yaml
 
 
 def rotate_to_local(points: np.ndarray, origin: np.ndarray, yaw_rad: float) -> np.ndarray:
@@ -70,12 +69,16 @@ def main():
         # Keep a regular temporal grid; CARLA logs contain one row per actor per tick.
         df = df.sort_values(["actor_id", "frame"])
         for actor_id, track in df.groupby("actor_id"):
-            track = track.drop_duplicates("frame").iloc[::args.sample_stride]
+            track = track.drop_duplicates("frame").sort_values("frame").iloc[::args.sample_stride]
+            frames = track["frame"].to_numpy(dtype=np.int64)
             xy = track[["x", "y"]].to_numpy(dtype=np.float32)
             yaw = np.deg2rad(track["yaw_deg"].to_numpy(dtype=np.float32))
             speed = track["speed_mps"].to_numpy(dtype=np.float32)
             total = args.obs_steps + args.pred_steps
             for start in range(0, len(track) - total + 1):
+                # Reject gaps so every window has a fixed temporal interval.
+                if not np.all(np.diff(frames[start:start + total]) == args.sample_stride):
+                    continue
                 end_obs = start + args.obs_steps
                 if float(np.nanmean(speed[start:end_obs])) < args.min_speed:
                     continue
