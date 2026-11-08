@@ -125,13 +125,15 @@ def main():
         world.tick()
         spawn_points = world.get_map().get_spawn_points()
         rng = random.Random(args.seed)
-        rng.shuffle(spawn_points)
         if not spawn_points:
             raise RuntimeError("No map spawn points available.")
         bp_lib = world.get_blueprint_library()
         ego_bp = bp_lib.find("vehicle.tesla.model3")
         ego_bp.set_attribute("role_name", "hero")
-        ego = world.try_spawn_actor(ego_bp, spawn_points[0])
+        ego_spawn = spawn_points[0]
+        nearby_spawns = sorted(spawn_points[1:], key=lambda transform: transform.location.distance(ego_spawn.location))[:max(args.vehicles * 3, args.vehicles)]
+        rng.shuffle(nearby_spawns)
+        ego = world.try_spawn_actor(ego_bp, ego_spawn)
         if ego is None:
             raise RuntimeError("Could not spawn ego vehicle.")
         spawned.append(ego)
@@ -142,7 +144,7 @@ def main():
 
         vehicle_bps = bp_lib.filter("vehicle.*")
         npc_count = 0
-        for transform in spawn_points[1:]:
+        for transform in nearby_spawns:
             if npc_count >= args.vehicles:
                 break
             bp = rng.choice(vehicle_bps)
