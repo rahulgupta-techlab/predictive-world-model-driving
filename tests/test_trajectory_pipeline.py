@@ -1,7 +1,20 @@
+import importlib.util
+from pathlib import Path
+
 import numpy as np
 
-from scripts.03_prepare_trajectory_dataset import rotate_to_local
-from scripts.04_evaluate_constant_velocity import metrics
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def load_script(name, filename):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+rotate_to_local = load_script("trajectory_dataset", "03_prepare_trajectory_dataset.py").rotate_to_local
+metrics = load_script("trajectory_metrics", "04_evaluate_constant_velocity.py").metrics
 
 
 def test_rotate_to_local_keeps_heading_aligned_x_axis():
