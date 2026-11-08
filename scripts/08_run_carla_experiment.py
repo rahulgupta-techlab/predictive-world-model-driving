@@ -236,6 +236,12 @@ def main():
                             ego_radius_m=float(planner_cfg["ego_radius_m"]),
                             safety_margin_m=float(planner_cfg["safety_margin_m"]),
                             preferred_steering_deg=preferred_steering)
+                    elif scene["untracked_actor_count"] > 0:
+                        from pwmd.planning.safety import PlannerDecision
+                        decision = PlannerDecision(
+                            "warmup_stop", 0.0, 0.0, True,
+                            "Stopping until every visible actor has a complete synchronized history",
+                            float("inf"), None)
                     elif scene["actor_ids"]:
                         local_future = predict(model, device, scene["observed_xy"])
                         ego_future = [
