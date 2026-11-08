@@ -1,0 +1,16 @@
+# Initial forecasting protocol. Values should be revisited after checking collected data.
+sample_rate_hz: 4
+observation_seconds: 2.0
+prediction_seconds: 3.0
+observation_steps: 8
+prediction_steps: 12
+sample_stride_from_carla_20hz: 5
+minimum_actor_speed_mps: 0.5
+split:
+  strategy: episode
+  seed: 42
+  train_fraction: 0.70
+  validation_fraction: 0.15
+  test_fraction: 0.15
+metrics:
+  miss_threshold_m: 2.0
