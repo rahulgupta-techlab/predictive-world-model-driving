@@ -1,185 +1,171 @@
 # Predictive World Model for Autonomous Driving
 
-A research-oriented portfolio project exploring whether an autonomous-driving agent can improve safety in long-horizon and unexpected scenarios by predicting possible future states, evaluating candidate actions, and inspecting its own predictions before acting.
+A research-oriented prototype exploring whether predicting surrounding actors' future motion can improve candidate-path selection and support an introspective safety fallback.
 
-> **Project status:** Research prototype under active development. The repository now includes CARLA collection utilities, trajectory dataset preparation, constant-velocity and LSTM forecasting baselines, an optional Transformer forecaster, and a transparent kinematic candidate-path risk scorer. These components have not yet been validated in a local CARLA run or evaluated on a collected dataset.
+> **Status:** Software components are being assembled. The repository includes CARLA data collection, actor-centric trajectory preparation, constant-velocity/LSTM/Transformer forecasting baselines, kinematic candidate-path scoring, and a rule-based fallback gate. No local CARLA run or empirical model/planner evaluation has yet been reported.
 
 ## Research question
 
-Can an autonomous-driving agent improve safety in long-horizon and unexpected scenarios by predicting possible future states, evaluating candidate actions through simulation, and inspecting its own predictions before acting?
+Can an autonomous-driving agent improve safety in long-horizon and unexpected scenarios by predicting possible future states, evaluating candidate actions, and inspecting its predictions before acting?
 
-## Planned research workflow
+## Current implementation
 
-1. **Simulation and data collection** — collect synchronized ego-vehicle, surrounding-actor, and front-camera observations in CARLA.
-2. **Dataset and baselines** — prepare temporal samples and establish constant-velocity prediction baselines.
-3. **World model** — compare the LSTM and Transformer trajectory forecasting baselines.
-4. **Predictive planning** — generate kinematic candidate paths and score them against constant-velocity actor extrapolations. This is a first risk-scoring baseline, not a closed-loop MPC controller.
-5. **Introspection and safety gate** — add calibrated uncertainty, model disagreement, and a tested fallback policy; these remain future work.
-6. **Evaluation** — compare safety, progress, comfort, prediction quality, and runtime, including ablations.
+1. **Data collection:** CARLA synchronous collector records ego state, nearby actor state and front-camera images. The ego vehicle uses Traffic Manager autopilot; this is a collection baseline, not a learned driving policy.
+2. **Trajectory dataset:** actor tracks are converted to heading-aligned local XY windows. Splits are assigned by episode to reduce leakage.
+3. **Forecasting baselines:** constant-velocity evaluation plus PyTorch LSTM and Transformer training scripts.
+4. **Prediction inference:** reusable checkpoint loader supports both learned baselines and returns future XY trajectories.
+5. **Candidate planning:** constant-steering bicycle-model paths are scored against either constant-velocity actor extrapolations or supplied predicted actor futures.
+6. **Safety gate:** a configurable rule-based gate accepts a candidate or requests a stop fallback when clearance/TTC thresholds are violated.
 
-## Initial implementation
-
-The current starter includes:
-- CARLA client/server and environment checks.
-- A synchronous CARLA data-collection script.
-- Front RGB camera capture and ego/nearby actor state logging.
-- YAML configuration and a Git ignore policy that excludes collected datasets.
-
-The collector currently uses CARLA Traffic Manager autopilot for the ego vehicle. It is a data-collection baseline, **not** a learned controller or a safety-validated autonomous-driving system. The initial mixed-traffic setup does not yet implement scripted edge-case scenarios.
+The planner interface can consume learned future trajectories, but the complete model-to-CARLA closed loop is **not** implemented. The current risk model assumes a common 2-D coordinate frame and synchronized predictions. It does not model road boundaries, traffic rules, full vehicle dynamics, uncertainty, or calibrated prediction confidence. The fallback is not safety-certified and is not yet connected to CARLA controls.
 
 ## Repository structure
 
 ```text
 .
+├── .github/workflows/tests.yml
 ├── configs/
-│   └── collection.yaml
+│   ├── collection.yaml
+│   ├── planner.yaml
+│   └── prediction.yaml
 ├── data/
 │   ├── processed/
 │   └── raw/
-├── experiments/
-│   └── results/
+├── experiments/results/
 ├── scripts/
 │   ├── 00_check_environment.py
 │   ├── 01_check_carla.py
 │   ├── 02_collect_scenarios.py
 │   ├── 03_prepare_trajectory_dataset.py
 │   ├── 04_evaluate_constant_velocity.py
-│   └── 05_train_lstm.py
-├── tests/
-│   └── test_trajectory_pipeline.py
-├── .gitignore
-└── requirements.txt
+│   ├── 05_train_lstm.py
+│   ├── 06_train_transformer.py
+│   └── 07_evaluate_learned_forecaster.py
+├── src/pwmd/
+│   ├── planning/
+│   │   ├── risk.py
+│   │   └── safety.py
+│   └── prediction/
+│       └── forecasters.py
+└── tests/
+    ├── test_planning_risk.py
+    ├── test_predicted_trajectory_risk.py
+    ├── test_safety_gate.py
+    └── test_trajectory_pipeline.py
 ```
 
-## Target development environment
+## Environment
 
-- Windows 11
-- Python 3.10
+Target environment:
+- Windows 11, Python 3.10
 - CARLA 0.9.15 server and matching Python API
-- NVIDIA RTX GPU; exact model and VRAM determine feasible simulation and model scale
-- 32 GB system RAM
-- CUDA-enabled PyTorch installed separately using the official selector
+- 32 GB RAM and an NVIDIA RTX GPU (exact model/VRAM still to be confirmed)
+- CUDA-enabled PyTorch installed separately using the official selector: https://pytorch.org/get-started/locally/
 
-## Setup
-
-1. Download and extract CARLA 0.9.15.
-2. Create and activate a Python 3.10 virtual environment:
-
-   ```powershell
-   py -3.10 -m venv .venv
-   .venv\Scripts\Activate.ps1
-   ```
-
-3. Install Python dependencies:
-
-   ```powershell
-   python -m pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
-
-4. Install the CARLA Python wheel that matches the server release and your Python version. For the Windows CPython 3.10 CARLA 0.9.15 package, adjust the path to your extracted CARLA directory:
-
-   ```powershell
-   pip install "C:\CARLA_0.9.15\PythonAPI\carla\dist\carla-0.9.15-cp310-cp310-win_amd64.whl"
-   ```
-
-5. Install a compatible CUDA-enabled PyTorch build from the official selector: https://pytorch.org/get-started/locally/
-6. Check the local environment:
-
-   ```powershell
-   python scripts/00_check_environment.py
-   ```
-
-7. Start the CARLA server, then verify the client connection:
-
-   ```powershell
-   python scripts/01_check_carla.py
-   ```
-
-8. Collect a short initial dataset:
-
-   ```powershell
-   python scripts/02_collect_scenarios.py --scenario mixed_traffic --episodes 3 --seconds 60
-   ```
-
-The CARLA server and Python client versions must match. Confirm the exact wheel path and compatibility with your local installation before installing.
-
-## Collected data
-
-Each episode is written under:
-
-```text
-data/raw/<scenario>/<episode_id>/
-├── ego.csv
-├── actors.csv
-├── metadata.json
-└── rgb/
-```
-
-- `ego.csv`: ego pose, velocity, acceleration, and applied control.
-- `actors.csv`: nearby vehicle and pedestrian states.
-- `rgb/`: front-camera images sampled according to `camera_stride`.
-- `metadata.json`: seed, map, versions, and collection configuration.
-
-Raw and processed datasets are excluded from Git by default. Do not commit large datasets, CARLA binaries, credentials, or model weights.
-
-## Trajectory forecasting pipeline (new starter modules)
-
-After collecting **at least three distinct episodes**, prepare a trajectory dataset:
+Create an environment and install base dependencies:
 
 ```powershell
+py -3.10 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Install the CARLA wheel matching the server release and Python version. Example path (adjust to the local extraction):
+
+```powershell
+pip install "C:\CARLA_0.9.15\PythonAPI\carla\dist\carla-0.9.15-cp310-cp310-win_amd64.whl"
+```
+
+Install a compatible PyTorch build from the official selector. Start the CARLA server and check the environment:
+
+```powershell
+python scripts/00_check_environment.py
+python scripts/01_check_carla.py
+```
+
+## Data collection and preparation
+
+Collect at least three distinct episodes to create independent train/validation/test splits:
+
+```powershell
+python scripts/02_collect_scenarios.py --scenario mixed_traffic --episodes 3 --seconds 60
 python scripts/03_prepare_trajectory_dataset.py --obs-steps 8 --pred-steps 12 --sample-stride 5
 ```
 
-This creates actor-centric, heading-aligned XY windows under `data/processed/`. Episode-level splitting is used to reduce leakage between overlapping windows. With fewer than three episodes, the script deliberately keeps all samples in the training split; collect more episodes before attempting held-out evaluation.
+The defaults represent 2 seconds of observations and 3 seconds of future trajectory at 4 Hz (assuming the collector's 20 Hz simulation rate and stride 5). If fewer than three episodes are available, all windows remain in the training split; do not treat them as held-out evaluation data.
 
-Evaluate the constant-velocity baseline:
+Episode folders contain actor/ego CSV logs, metadata and sampled RGB images. Raw and processed datasets are excluded from Git by default. Do not commit large datasets, CARLA binaries, credentials or trained weights.
+
+## Forecasting baselines
+
+Evaluate constant velocity on the test split:
 
 ```powershell
 python scripts/04_evaluate_constant_velocity.py --split test --dt 0.25
 ```
 
-Train the optional LSTM baseline (requires a separately installed PyTorch build):
+Train the LSTM and Transformer baselines (PyTorch required):
 
 ```powershell
 python scripts/05_train_lstm.py --epochs 40
-```
-
-The LSTM checkpoint and metrics are starter outputs, not evidence of a successful experiment until the scripts have been run on collected data. Review dataset size, split composition, and metrics before drawing conclusions.
-
-Run unit tests for coordinate transforms and metric calculations:
-
-```powershell
-pytest -q
-```
-
-Train the Transformer alternative:
- 
-```powershell
 python scripts/06_train_transformer.py --epochs 60 --d-model 64 --heads 4 --layers 2
 ```
 
-The prediction configuration is in `configs/prediction.yaml`. The planner configuration is in `configs/planner.yaml`. The risk-scoring module in `src/pwmd/planning/risk.py` generates constant-steering bicycle-model paths and scores them against constant-velocity actor extrapolations. It is a transparent kinematic baseline; it does not yet consume learned multi-agent predictions, optimize a full MPC objective, enforce road boundaries or traffic rules, model uncertainty, or control a CARLA ego vehicle.
+Evaluate a trained checkpoint on the held-out test split:
 
-The `safety.py` module adds a rule-based introspection gate: if the selected candidate violates configured clearance or time-to-collision thresholds, it requests a stop fallback. This is a simple experimental guardrail, not a certified safety mechanism, and it has not been connected to CARLA vehicle controls. The current forecasting scripts use actor position tracks from CARLA logs. They do not yet include camera-based detection, multi-agent interaction modelling, calibrated predictive uncertainty, or a learned introspection model.
+```powershell
+python scripts/07_evaluate_learned_forecaster.py --checkpoint experiments/results/transformer.pt --split test
+```
 
-## Planned evaluation
+Use `--checkpoint experiments/results/lstm.pt` to evaluate the LSTM. The evaluator checks that the dataset window dimensions match the checkpoint. Metrics are ADE, FDE and miss rate; they are not evidence of model quality until the data and split composition have been inspected and the experiment has actually run.
 
-| Area | Metrics |
+## Connecting predictions to the planner
+
+The reusable inference API is in `src/pwmd/prediction/forecasters.py`. The planner accepts one future XY array per surrounding actor:
+
+```python
+from pwmd.prediction.forecasters import load_forecaster, predict
+from pwmd.planning.risk import generate_candidate_paths
+from pwmd.planning.safety import decide_action_from_predictions
+
+model, device, metadata = load_forecaster("experiments/results/transformer.pt")
+actor_futures = predict(model, device, observed_actor_windows)
+times, candidate_paths = generate_candidate_paths(speed_mps=8.0)
+decision = decide_action_from_predictions(
+    candidate_paths, times, actor_futures,
+    current_speed_mps=8.0,
+    actor_radii_m=[1.0] * len(actor_futures),
+)
+```
+
+This illustrates the software interface only. Inputs must already be transformed into the same coordinate frame, ordered on the same future time grid, and associated with the correct actor radii. The current dataset's actor-centric windows are not automatically a synchronized multi-actor scene representation; a scene assembler and coordinate-transform validation are still required before using this interface in a real CARLA loop.
+
+## Evaluation plan
+
+| Dimension | Candidate metrics |
 |---|---|
-| Trajectory prediction | ADE, FDE, miss rate |
-| Safety | Collision rate, near-collision rate, minimum time-to-collision |
+| Forecasting | ADE, FDE, miss rate |
+| Safety | Collision rate, near-collision rate, minimum TTC |
 | Driving performance | Route completion, travel time |
 | Comfort | Acceleration and jerk |
 | Introspection | Risk recall, false-alarm rate, uncertainty calibration |
 | Runtime | Inference and planning latency |
 
-Safety comparisons should account for route progress so that a system that simply stops is not automatically considered better. Metrics and scenarios will be finalized before reporting experimental results.
+The next major research milestone is a validated scene assembler and CARLA closed-loop adapter, followed by controlled comparisons between autopilot, constant-velocity planning and learned-prediction planning. Safety comparisons must account for route progress so that a system that simply stops is not automatically considered better.
+
+## Tests
+
+```powershell
+pytest -q
+```
+
+GitHub Actions runs the lightweight unit tests without requiring CARLA or PyTorch. A green unit-test run would validate only the tested software contracts, not CARLA integration or driving safety.
 
 ## Research integrity
 
-This repository distinguishes implemented functionality from planned work. Experimental results will be reported only after the corresponding experiments have been run. Any reconstruction of earlier research planning will be described as planning, not as earlier software implementation.
+The repository distinguishes implemented functionality from planned experiments. No performance results are claimed until the corresponding experiments have been run. Earlier research planning is not represented as earlier software implementation.
 
 ## License
 
-No open-source license has been added yet. Until a license is selected, standard copyright restrictions apply.
+No open-source license has been added. Standard copyright restrictions apply until a license is selected.
